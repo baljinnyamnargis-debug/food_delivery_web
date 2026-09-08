@@ -10,6 +10,8 @@ import { OrderDetail } from "@/components/main/OrderDetail";
 import { LoginAlertModal } from "@/components/main/LoginAlertModal";
 import { AddressModal } from "@/components/main/AddressModal"; 
 import { UserContext } from "@/context/UserContext"; 
+import { Footer } from "@/components/main/Footer"; // 👈 1. Footer-ээ импортолно
+
 
 export default function Home() {
   const context = useContext(UserContext);
@@ -180,6 +182,8 @@ export default function Home() {
         </div>
       </div>
 
+      <Footer /> {/* 👈 1. Footer-ээ энд дуудаж байна */}
+
       {/* Сагсны цонх */}
       <OrderDetail
         isOpen={isOrderModalOpen} 
@@ -213,5 +217,7 @@ export default function Home() {
         onClose={() => setIsLoginAlertOpen(false)} 
       />
     </div>
+
+    
   );
 }

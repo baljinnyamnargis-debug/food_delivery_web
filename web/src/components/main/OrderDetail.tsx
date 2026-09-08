@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react'; // 1. useEffect импортлов
 import { UserContext } from "@/context/UserContext";
 import { MapPin, X, AlertTriangle, Calendar } from "lucide-react"; 
+import axios from 'axios';
 
 interface OrderDetailProps {
   isOpen: boolean;
   onClose: () => void;
-  orders: any[]; 
+  orders?: any[]; 
   cartItems: any[];
   onRequiredLogin: () => void;
   deliveryAddress: string; 
@@ -20,7 +21,6 @@ interface OrderDetailProps {
 export const OrderDetail: React.FC<OrderDetailProps> = ({ 
   isOpen, 
   onClose, 
-  orders = [], 
   cartItems, 
   onRequiredLogin,
   deliveryAddress,
@@ -33,6 +33,30 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
   const [activeTab, setActiveTab] = useState<'cart' | 'order'>('cart');
   const [isSuccess, setIsSuccess] = useState(false); 
   const [showAddressAlert, setShowAddressAlert] = useState(false); 
+  const [userOrders, setUserOrders] = useState<any[]>([]); // 2. Захиалгын түүх хадгалах State
+
+  // 3. 📍 Захиалгын түүх татах функц
+  const fetchOrderHistory = async () => {
+    if (!context?.user?._id) return;
+
+    try {
+      const response = await axios.get(
+        `http://localhost:3001/foodOrder/${context.user._id}`
+      );
+      if (response.data?.foodOrders) {
+        setUserOrders(response.data.foodOrders);
+      }
+    } catch (error) {
+      console.error("Error fetching order history:", error);
+    }
+  };
+
+  // 4. 📍 Модал нээгдэх болон Order таб руу шилжихэд захиалгын түүхийг татна
+  useEffect(() => {
+    if (isOpen && context?.user?._id) {
+      fetchOrderHistory();
+    }
+  }, [isOpen, activeTab, context?.user?._id]);
 
   if (!isOpen) return null;
 
@@ -40,20 +64,40 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
   const shippingFee = subtotal > 0 ? 5000 : 0; 
   const total = subtotal > 0 ? subtotal + shippingFee : 0;
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!context?.user) {
       onRequiredLogin();
       return;
     }
+
     if (!deliveryAddress) {
-      setShowAddressAlert(true); 
+      setShowAddressAlert(true);
       return;
     }
-    
-    if (onClearCart) onClearCart(); 
-    if (onClearAddress) onClearAddress(); 
 
-    setIsSuccess(true); 
+    try {
+      const response = await axios.post("http://localhost:3001/foodOrder", {
+        user: context.user._id,
+        foodOrderItems: cartItems.map((item) => ({
+          food: item.food._id,
+          quantity: item.quantity,
+        })),
+        totalPrice: total,
+        address: deliveryAddress,
+        status: "Pending",
+      });
+
+      console.log("Захиалга амжилттай үүслээ:", response.data);
+
+      if (onClearCart) onClearCart();
+      if (onClearAddress) onClearAddress();
+
+      // Захиалга амжилттай үүссэний дараа түүхээ шинэчилж татна
+      fetchOrderHistory();
+      setIsSuccess(true);
+    } catch (error) {
+      console.error("Error placing order:", error);
+    }
   };
 
   const handleBackToHome = () => {
@@ -61,7 +105,6 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
     onClose(); 
   };
 
-  // 📍 Төлөвийн (Status) харагдах өнгийг Figma-тай адилхан болгох туслах функц (Cancelled нэмсэн)
   const getStatusBadge = (status: string) => {
     const s = status?.toLowerCase();
     if (s === 'pending' || s === 'үүссэн' || s === 'хүлээгдэж буй' || s === 'cancelled' || s === 'цуцлагдсан') {
@@ -77,7 +120,6 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-end p-6">
       
-      {/* 🛒 САГСНЫ ҮНДСЭН ЦОНХ */}
       <div className="relative flex h-[85vh] w-full max-w-md flex-col rounded-[24px] bg-[#222222] p-5 text-white shadow-2xl border border-neutral-800">
         
         {/* Header */}
@@ -94,11 +136,10 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
           <button onClick={() => setActiveTab('order')} className={`rounded-lg py-2.5 cursor-pointer transition ${activeTab === 'order' ? 'bg-[#ef4444] text-white shadow-md' : 'text-neutral-400'}`}>Order</button>
         </div>
 
-        {/* Скролл контейнер */}
         <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
           {activeTab === 'cart' ? (
             <>
-              {/* My Cart блок */}
+              {/* My Cart */}
               <div className="bg-white rounded-[16px] p-4 text-black space-y-4 shadow-xs">
                 <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">My cart</h3>
                 {cartItems.length === 0 ? (
@@ -135,7 +176,7 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
                 )}
               </div>
 
-              {/* Delivery location блок */}
+              {/* Delivery location */}
               <div className="bg-white rounded-[16px] p-4 text-black space-y-2 shadow-xs">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Delivery location</span>
                 <div onClick={onOpenAddressModal} className="w-full min-h-[40px] flex items-center justify-between border border-gray-200 rounded-xl px-3 py-2 bg-gray-50/50 hover:bg-gray-50 hover:border-gray-300 transition cursor-pointer">
@@ -145,7 +186,7 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
                 </div>
               </div>
 
-              {/* Payment info блок */}
+              {/* Payment info */}
               <div className="bg-white rounded-[16px] p-4 text-black space-y-3 shadow-sm border border-gray-100">
                 <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Payment info</h3>
                 <div className="space-y-2 text-xs text-gray-500 font-medium">
@@ -173,25 +214,26 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
             <div className="bg-white rounded-[16px] p-4 text-black space-y-4 shadow-xs">
               <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wide">Order history</h3>
               
-              {orders.length === 0 ? (
+              {userOrders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400 text-xs">
                   <span>📋</span>
                   <p className="mt-1">Order History is empty</p>
                 </div>
               ) : (
                 <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
-                  {orders.map((order: any, idx: number) => (
+                  {userOrders.map((order: any, idx: number) => (
                     <div key={order._id || idx} className="border-b border-dashed border-gray-100 pb-4 last:border-0 last:pb-0">
                       
                       <div className="flex justify-between items-center font-bold text-xs text-gray-900 mb-2">
-                        <span>{(order.totalAmount || order.totalPrice || 0).toLocaleString()}₮ <span className="text-gray-400 font-normal">(#{order.orderNumber || idx + 1000})</span></span>
+                        <span>{(order.totalPrice || 0).toLocaleString()}₮ <span className="text-gray-400 font-normal">(#{order._id?.slice(-4) || idx + 1000})</span></span>
                         {getStatusBadge(order.status)}
                       </div>
 
+                      {/* 5. 📍 order.items-ийг order.foodOrderItems болгож засав */}
                       <div className="space-y-1 pl-1 mb-2">
-                        {order.items?.map((item: any, i: number) => (
+                        {order.foodOrderItems?.map((item: any, i: number) => (
                           <div key={i} className="flex justify-between text-[11px] text-gray-500">
-                            <span className="truncate max-w-[200px]">• {item.foodName || item.food?.foodName}</span>
+                            <span className="truncate max-w-[200px]">• {item.food?.foodName || "Хоол"}</span>
                             <span className="font-medium text-gray-700">x {item.quantity}</span>
                           </div>
                         ))}
@@ -200,11 +242,11 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
                       <div className="space-y-1 text-[10px] text-gray-400 font-medium">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-3 h-3 text-gray-400" />
-                          <span>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : '2024/12/20'}</span>
+                          <span>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'Өнөөдөр'}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          <span className="line-clamp-1">{order.address || order.deliveryAddress || "Хаяг оруулаагүй"}</span>
+                          <span className="line-clamp-1">{order.address || "Хаяг оруулаагүй"}</span>
                         </div>
                       </div>
 
@@ -217,7 +259,7 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
         </div>
       </div>
 
-      {/* ⚠️ Missing Delivery Address Alert */}
+      {/* Alert Modals */}
       {showAddressAlert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 animate-in fade-in duration-200">
           <div className="flex flex-col items-center justify-center bg-white text-black w-full max-w-[340px] rounded-[24px] p-6 text-center shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-200">
@@ -234,7 +276,6 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
         </div>
       )}
 
-      {/* 🎉 Success order modal */}
       {isSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 animate-in fade-in duration-200">
           <div className="flex flex-col items-center justify-center bg-white text-black w-full max-w-[360px] rounded-[24px] p-8 text-center shadow-2xl border border-gray-100 animate-in zoom-in-95 duration-200">

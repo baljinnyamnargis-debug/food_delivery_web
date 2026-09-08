@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { UserProvider } from "@/context/UserContext";
 import { Toaster } from "sonner"; 
 
+
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
 const geistSans = Geist({
@@ -34,7 +35,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <UserProvider>
-          {children}
+          {/* Үндсэн контент дэлгэцийг бүтэн дүүргэх flex-1 класс */}
+          <main className="flex-1">
+            {children}
+          </main>
+
           <Toaster richColors position="top-center" />
         </UserProvider>
       </body>
