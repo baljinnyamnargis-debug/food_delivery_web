@@ -82,7 +82,7 @@ const AddDishDialog = ({
 
       const imageUrl = await uploadFile(file);
 
-      await axios.post("http://localhost:3001/food", {
+      await axios.post("https://food-delivery-server-dun.vercel.app/food", {
         foodName: foodName.trim(),
         price: Number(price),
         ingredients: ingredients.trim(),

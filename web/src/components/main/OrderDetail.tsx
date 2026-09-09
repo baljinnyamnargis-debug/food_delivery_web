@@ -42,7 +42,7 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
 
     try {
       const response = await axios.get(
-        `http://localhost:3001/foodOrder/${userId}`
+        `https://food-delivery-server-dun.vercel.app/foodOrder/${userId}`
       );
       
       // Backend хариуны бүтцээс хамаарч датаг зөв оноох
@@ -100,7 +100,7 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
     };
 
     try {
-      const response = await axios.post("http://localhost:3001/foodOrder", payload);
+      const response = await axios.post("https://food-delivery-server-dun.vercel.app/foodOrder", payload);
 
       console.log("Захиалга амжилттай үүслээ:", response.data);
 

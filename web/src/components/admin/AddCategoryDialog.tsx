@@ -33,7 +33,7 @@ const AddCategoryDialog = ({
     }
 
     try {
-      await axios.post("http://localhost:3001/category", {
+      await axios.post("https://food-delivery-server-dun.vercel.app/category", {
         categoryName: trimmedValue,
       });
 

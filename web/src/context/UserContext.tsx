@@ -5,7 +5,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-axios.defaults.baseURL = "http://localhost:3001";
+axios.defaults.baseURL = "https://food-delivery-server-dun.vercel.app";
 
 type UserType = {
   email: string;

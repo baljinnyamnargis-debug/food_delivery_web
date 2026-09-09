@@ -160,7 +160,7 @@ export default function OrdersTable() {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:3001/foodOrder?t=${Date.now()}`);
+      const response = await axios.get(`https://food-delivery-server-dun.vercel.app/foodOrder?t=${Date.now()}`);
       
       let fetchedData: OrderItem[] = [];
       if (Array.isArray(response.data)) {
@@ -233,7 +233,7 @@ export default function OrdersTable() {
     );
 
     try {
-      await axios.put(`http://localhost:3001/foodOrder/${id}`, { status: newStatus });
+      await axios.put(`https://food-delivery-server-dun.vercel.app/foodOrder/${id}`, { status: newStatus });
     } catch (err) {
       console.error("Төлөв шинэчлэхэд алдаа гарлаа:", err);
     }

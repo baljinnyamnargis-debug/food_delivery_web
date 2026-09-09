@@ -23,7 +23,7 @@ const Page = () => {
   const getCategories = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("http://localhost:3001/category");
+      const response = await axios.get("https://food-delivery-server-dun.vercel.app/category");
       setCategories(response.data?.foodCategories || []);
     } catch (error) {
       console.error("Категори татахад алдаа гарлаа:", error);
@@ -34,7 +34,7 @@ const Page = () => {
 
   const getDishes = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/food");
+      const response = await axios.get("https://food-delivery-server-dun.vercel.app/food");
       setDishes(response.data?.food || []);
     } catch (error) {
       console.error("Хоолны дата татахад алдаа гарлаа:", error);

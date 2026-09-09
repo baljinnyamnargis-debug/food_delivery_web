@@ -104,8 +104,8 @@ export default function Home() {
     setLoading(true);
     try {
       const [categoryRes, foodRes] = await Promise.all([
-        axios.get("http://localhost:3001/category"),
-        axios.get("http://localhost:3001/food"),
+        axios.get("https://food-delivery-server-dun.vercel.app/category"),
+        axios.get("https://food-delivery-server-dun.vercel.app/food"),
       ]);
       
       const allCategories: CategoryType[] = categoryRes.data?.foodCategories || [];
@@ -125,7 +125,7 @@ export default function Home() {
   const fetchUserOrders = async () => {
     if (!context?.user?._id) return;
     try {
-      const response = await axios.get(`http://localhost:3001/foodOrder/${context.user._id}`);
+      const response = await axios.get(`https://food-delivery-server-dun.vercel.app/foodOrder/${context.user._id}`);
       setOrders(response.data?.foodOrders || []); 
     } catch (error) {
       console.error("Захиалгын түүх татахад алдаа гарлаа:", error);

@@ -91,7 +91,7 @@ const EditDishDialog = ({
         }
       }
 
-      await axios.put(`http://localhost:3001/food/${dish._id}`, {
+      await axios.put(`https://food-delivery-server-dun.vercel.app/food/${dish._id}`, {
         foodName: foodName.trim(),
         price: Number(price),
         ingredients: ingredients.trim(),
