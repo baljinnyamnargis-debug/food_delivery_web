@@ -23,6 +23,7 @@ const FoodSchema = new Schema({
     type: [FoodOrderItem],
     required: true,
   },
+  address:String,
   totalPrice: {
     type: Number,
     required: true,

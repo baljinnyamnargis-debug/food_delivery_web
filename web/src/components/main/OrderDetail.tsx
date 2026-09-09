@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useContext, useEffect } from 'react'; // 1. useEffect импортлов
+import React, { useState, useContext, useEffect } from 'react';
 import { UserContext } from "@/context/UserContext";
 import { MapPin, X, AlertTriangle, Calendar } from "lucide-react"; 
 import axios from 'axios';
@@ -21,7 +21,7 @@ interface OrderDetailProps {
 export const OrderDetail: React.FC<OrderDetailProps> = ({ 
   isOpen, 
   onClose, 
-  cartItems, 
+  cartItems = [], 
   onRequiredLogin,
   deliveryAddress,
   onOpenAddressModal,
@@ -33,39 +33,44 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
   const [activeTab, setActiveTab] = useState<'cart' | 'order'>('cart');
   const [isSuccess, setIsSuccess] = useState(false); 
   const [showAddressAlert, setShowAddressAlert] = useState(false); 
-  const [userOrders, setUserOrders] = useState<any[]>([]); // 2. Захиалгын түүх хадгалах State
+  const [userOrders, setUserOrders] = useState<any[]>([]);
 
-  // 3. 📍 Захиалгын түүх татах функц
+  // 📍 Захиалгын түүх татах функц
   const fetchOrderHistory = async () => {
-    if (!context?.user?._id) return;
+    const userId = context?.user?._id || context?.user?.id;
+    if (!userId) return;
 
     try {
       const response = await axios.get(
-        `http://localhost:3001/foodOrder/${context.user._id}`
+        `http://localhost:3001/foodOrder/${userId}`
       );
-      if (response.data?.foodOrders) {
-        setUserOrders(response.data.foodOrders);
+      
+      // Backend хариуны бүтцээс хамаарч датаг зөв оноох
+      const ordersData = response.data?.foodOrders || response.data?.orders || response.data;
+      if (Array.isArray(ordersData)) {
+        setUserOrders(ordersData);
       }
     } catch (error) {
       console.error("Error fetching order history:", error);
     }
   };
 
-  // 4. 📍 Модал нээгдэх болон Order таб руу шилжихэд захиалгын түүхийг татна
   useEffect(() => {
-    if (isOpen && context?.user?._id) {
+    if (isOpen && (context?.user?._id || context?.user?.id)) {
       fetchOrderHistory();
     }
-  }, [isOpen, activeTab, context?.user?._id]);
+  }, [isOpen, activeTab, context?.user]);
 
   if (!isOpen) return null;
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.food?.price || 0) * item.quantity, 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + (item.food?.price || item.price || 0) * (item.quantity || 1), 0);
   const shippingFee = subtotal > 0 ? 5000 : 0; 
   const total = subtotal > 0 ? subtotal + shippingFee : 0;
 
   const handleCheckout = async () => {
-    if (!context?.user) {
+    const userId = context?.user?._id || context?.user?.id;
+
+    if (!userId) {
       onRequiredLogin();
       return;
     }
@@ -75,28 +80,38 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
       return;
     }
 
+    // 📍 Backend руу илгээх хоолны сагсны өгөгдлийг цэгцлэх
+    const formattedItems = cartItems.map((item) => {
+      const foodId = typeof item.food === 'object' ? item.food?._id : (item.food || item._id);
+      return {
+        food: foodId,
+        quantity: item.quantity || 1,
+      };
+    });
+
+    // Backend-ийн validation алдаанаас сэргийлж payload бэлдэх
+    const payload = {
+      user: userId,
+      foodOrderItem: formattedItems,
+      foodOrderItems: formattedItems, // Бэкенд олон тоо дээр нэрлэсэн байсан ч ажиллана
+      totalPrice: total,
+      address: deliveryAddress,
+      status: "Pending",
+    };
+
     try {
-      const response = await axios.post("http://localhost:3001/foodOrder", {
-        user: context.user._id,
-        foodOrderItems: cartItems.map((item) => ({
-          food: item.food._id,
-          quantity: item.quantity,
-        })),
-        totalPrice: total,
-        address: deliveryAddress,
-        status: "Pending",
-      });
+      const response = await axios.post("http://localhost:3001/foodOrder", payload);
 
       console.log("Захиалга амжилттай үүслээ:", response.data);
 
       if (onClearCart) onClearCart();
       if (onClearAddress) onClearAddress();
 
-      // Захиалга амжилттай үүссэний дараа түүхээ шинэчилж татна
-      fetchOrderHistory();
+      await fetchOrderHistory();
       setIsSuccess(true);
-    } catch (error) {
-      console.error("Error placing order:", error);
+    } catch (error: any) {
+      console.error("Error placing order:", error.response?.data || error.message);
+      alert(error.response?.data?.message || "Захиалга үүсгэхэд алдаа гарлаа.");
     }
   };
 
@@ -107,18 +122,29 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
 
   const getStatusBadge = (status: string) => {
     const s = status?.toLowerCase();
-    if (s === 'pending' || s === 'үүссэн' || s === 'хүлээгдэж буй' || s === 'cancelled' || s === 'цуцлагдсан') {
+    if (s === 'pending' || s === 'үүссэн' || s === 'хүлээгдэж буй') {
       return (
-        <span className="bg-red-50 text-red-500 font-bold text-[10px] px-2 py-0.5 rounded-full border border-red-100 uppercase tracking-wider">
-          {s === 'cancelled' || s === 'цуцлагдсан' ? 'Cancelled' : 'Pending'}
+        <span className="bg-amber-50 text-amber-600 font-bold text-[10px] px-2 py-0.5 rounded-full border border-amber-200 uppercase tracking-wider">
+          Pending
         </span>
       );
     }
-    return <span className="bg-gray-100 text-gray-600 font-bold text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">Delivered</span>;
+    if (s === 'cancelled' || s === 'цуцлагдсан') {
+      return (
+        <span className="bg-red-50 text-red-500 font-bold text-[10px] px-2 py-0.5 rounded-full border border-red-100 uppercase tracking-wider">
+          Cancelled
+        </span>
+      );
+    }
+    return (
+      <span className="bg-emerald-50 text-emerald-600 font-bold text-[10px] px-2 py-0.5 rounded-full border border-emerald-200 uppercase tracking-wider">
+        Delivered
+      </span>
+    );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-end p-6 bg-black/30 backdrop-blur-xs">
       
       <div className="relative flex h-[85vh] w-full max-w-md flex-col rounded-[24px] bg-[#222222] p-5 text-white shadow-2xl border border-neutral-800">
         
@@ -151,21 +177,21 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
                 ) : (
                   <div className="space-y-4 max-h-[30vh] overflow-y-auto pr-1">
                     {cartItems.map((item: any) => (
-                      <div key={item._id} className="flex items-center gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0 relative group">
-                        <img src={item.food?.image || "/Image.png"} className="h-14 w-16 rounded-lg object-cover bg-gray-50 flex-shrink-0" />
+                      <div key={item._id || item.food?._id} className="flex items-center gap-3 border-b border-gray-100 pb-3 last:border-0 last:pb-0 relative group">
+                        <img src={item.food?.image || item.image || "/placeholder.png"} className="h-14 w-16 rounded-lg object-cover bg-gray-50 flex-shrink-0" alt={item.food?.foodName} />
                         <div className="flex-1 min-w-0 pr-6">
-                          <h4 className="font-bold text-xs text-[#ef4444] truncate">{item.food?.foodName}</h4>
+                          <h4 className="font-bold text-xs text-[#ef4444] truncate">{item.food?.foodName || item.foodName}</h4>
                           <p className="text-[10px] text-gray-400 line-clamp-1 mt-0.5">
-                            {item.food?.description || "Fluffy pancakes stacked with fruits, cream, syrup."}
+                            {item.food?.description || item.description || "No description available"}
                           </p>
                           <div className="flex justify-between items-center mt-1">
                             <span className="text-[11px] text-gray-500 font-medium">Qty: {item.quantity}</span>
-                            <span className="font-bold text-xs text-gray-900">{(item.food?.price * item.quantity).toLocaleString()}₮</span>
+                            <span className="font-bold text-xs text-gray-900">{((item.food?.price || item.price || 0) * item.quantity).toLocaleString()}₮</span>
                           </div>
                         </div>
 
                         <button
-                          onClick={() => onRemoveItem?.(item._id)}
+                          onClick={() => onRemoveItem?.(item._id || item.food?._id)}
                           className="absolute top-0 right-0 p-1 text-gray-400 hover:text-red-500 rounded-full hover:bg-gray-100 transition cursor-pointer"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -181,7 +207,7 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Delivery location</span>
                 <div onClick={onOpenAddressModal} className="w-full min-h-[40px] flex items-center justify-between border border-gray-200 rounded-xl px-3 py-2 bg-gray-50/50 hover:bg-gray-50 hover:border-gray-300 transition cursor-pointer">
                   <p className="text-xs text-gray-700 font-medium line-clamp-1">
-                    {cartItems.length > 0 && deliveryAddress ? deliveryAddress : "Please share your complete address"}
+                    {deliveryAddress ? deliveryAddress : "Please share your complete address"}
                   </p>
                 </div>
               </div>
@@ -221,37 +247,45 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
                 </div>
               ) : (
                 <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
-                  {userOrders.map((order: any, idx: number) => (
-                    <div key={order._id || idx} className="border-b border-dashed border-gray-100 pb-4 last:border-0 last:pb-0">
-                      
-                      <div className="flex justify-between items-center font-bold text-xs text-gray-900 mb-2">
-                        <span>{(order.totalPrice || 0).toLocaleString()}₮ <span className="text-gray-400 font-normal">(#{order._id?.slice(-4) || idx + 1000})</span></span>
-                        {getStatusBadge(order.status)}
-                      </div>
+                  {userOrders.map((order: any, idx: number) => {
+                    const itemsList = order.foodOrderItem || order.foodOrderItems || [];
 
-                      {/* 5. 📍 order.items-ийг order.foodOrderItems болгож засав */}
-                      <div className="space-y-1 pl-1 mb-2">
-                        {order.foodOrderItems?.map((item: any, i: number) => (
-                          <div key={i} className="flex justify-between text-[11px] text-gray-500">
-                            <span className="truncate max-w-[200px]">• {item.food?.foodName || "Хоол"}</span>
-                            <span className="font-medium text-gray-700">x {item.quantity}</span>
+                    return (
+                      <div key={order._id || idx} className="border-b border-dashed border-gray-100 pb-4 last:border-0 last:pb-0">
+                        
+                        <div className="flex justify-between items-center font-bold text-xs text-gray-900 mb-2">
+                          <span>{(order.totalPrice || order.total || 0).toLocaleString()}₮ <span className="text-gray-400 font-normal">(#{order._id?.slice(-4) || idx + 1000})</span></span>
+                          {getStatusBadge(order.status)}
+                        </div>
+
+                        <div className="space-y-1 pl-1 mb-2">
+                          {itemsList.map((item: any, i: number) => {
+                            const foodName = item.food?.foodName || item.foodName || "Food Item";
+                            const qty = item.quantity || item.count || 1;
+
+                            return (
+                              <div key={i} className="flex justify-between text-[11px] text-gray-500">
+                                <span className="truncate max-w-[200px]">• {foodName}</span>
+                                <span className="font-medium text-gray-700">x {qty}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className="space-y-1 text-[10px] text-gray-400 font-medium">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="w-3 h-3 text-gray-400" />
+                            <span>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'Өнөөдөр'}</span>
                           </div>
-                        ))}
-                      </div>
-
-                      <div className="space-y-1 text-[10px] text-gray-400 font-medium">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-3 h-3 text-gray-400" />
-                          <span>{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'Өнөөдөр'}</span>
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                            <span className="line-clamp-1">{order.address || "Хаяг оруулаагүй"}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                          <span className="line-clamp-1">{order.address || "Хаяг оруулаагүй"}</span>
-                        </div>
-                      </div>
 
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -292,3 +326,5 @@ export const OrderDetail: React.FC<OrderDetailProps> = ({
     </div>
   );
 };
+
+export default OrderDetail;

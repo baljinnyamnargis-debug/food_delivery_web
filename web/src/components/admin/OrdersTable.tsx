@@ -57,6 +57,7 @@ interface OrderItem {
   };
   customer?: string;
   foodOrderItems?: FoodItem[];
+  foodOrderItem?: FoodItem[]; // 👈 Бэкендийн Schema-тай тааруулж нэмэв
   foodName?: string;
   foodCount?: number;
   foodImage?: string;
@@ -65,7 +66,7 @@ interface OrderItem {
   totalPrice?: number;
   total?: number;
   address?: string;
-  status: "Pending" | "Delivered" | "Cancelled" | string;
+  status: "pending" | "delivered" | "cancelled" | string;
 }
 
 // 📍 Figma дизайнтай адил Food багана дээр задардаг Pop-over компонент
@@ -84,7 +85,6 @@ const FoodCell = ({ items }: { items?: FoodItem[] }) => {
 
   return (
     <div className="relative inline-block">
-      {/* Figma дээрх "2 foods ∨" товчлуур */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -94,7 +94,6 @@ const FoodCell = ({ items }: { items?: FoodItem[] }) => {
         {isOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
       </button>
 
-      {/* Товч дээр дарахад доошоо задарч харагдах поповер */}
       {isOpen && (
         <div className="absolute left-0 top-full mt-2 w-60 bg-white border border-gray-200 rounded-xl shadow-lg p-2.5 z-50 space-y-2 animate-in fade-in zoom-in-95 duration-100">
           {items.map((item, idx) => {
@@ -145,7 +144,6 @@ export default function OrdersTable() {
   const [selectedStatus, setSelectedStatus] = useState<string>("Pending");
   const [loading, setLoading] = useState(false);
 
-  // Динамик огнооны мөр үүсгэх
   const today = new Date();
   const pastDate = new Date();
   pastDate.setDate(today.getDate() - 30);
@@ -159,7 +157,6 @@ export default function OrdersTable() {
 
   const dateRangeText = `${formatDate(pastDate)} - ${formatDate(today)}`;
 
-  // Бэкендээс дата татах функц
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
@@ -354,9 +351,9 @@ export default function OrdersTable() {
                       {customerName}
                     </TableCell>
 
-                    {/* 📍 Зассан Food багана */}
+                    {/* 📍 Зассан Food багана (s-тэй болон s-гүй талбарын алийг нь ч дэмжинэ) */}
                     <TableCell className="text-xs">
-                      <FoodCell items={order.foodOrderItems} />
+                      <FoodCell items={order.foodOrderItem || order.foodOrderItems} />
                     </TableCell>
 
                     <TableCell className="text-xs text-gray-500 whitespace-nowrap">
@@ -371,22 +368,22 @@ export default function OrdersTable() {
 
                     <TableCell>
                       <Select
-                        value={order.status || "Pending"}
+                        value={order.status || "pending"}
                         onValueChange={(val: OrderItem["status"]) =>
                           handleStatusChange(orderId, val)
                         }
                       >
                         <SelectTrigger
                           className={`w-[110px] h-7 text-xs font-medium rounded-full border px-2 justify-between ${getStatusBadge(
-                            order.status || "Pending"
+                            order.status || "pending"
                           )}`}
                         >
-                          <SelectValue placeholder="Pending" />
+                          <SelectValue placeholder="pending" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Pending">Pending</SelectItem>
-                          <SelectItem value="Delivered">Delivered</SelectItem>
-                          <SelectItem value="Cancelled">Cancelled</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="delivered">Delivered</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -407,7 +404,7 @@ export default function OrdersTable() {
           </DialogHeader>
 
           <div className="flex justify-center gap-2 my-4">
-            {(["Delivered", "Pending", "Cancelled"] as const).map((status) => (
+            {(["delivered", "pending", "cancelled"] as const).map((status) => (
               <Badge
                 key={status}
                 variant="outline"
