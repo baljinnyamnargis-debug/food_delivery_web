@@ -6,10 +6,11 @@ import Image from "next/image";
 import FoodsSection from "@/components/admin/FoodsSection";
 import { CategoryType, DishType } from "@/types/common";
 import { Header } from "@/components/main/Header";
-import  OrderDetail  from "@/components/main/OrderDetail";
+import OrderDetail from "@/components/main/OrderDetail";
 import { LoginAlertModal } from "@/components/main/LoginAlertModal";
 import { AddressModal } from "@/components/main/AddressModal"; 
 import { UserContext } from "@/context/UserContext"; 
+import { Footer } from "@/components/main/Footer";
 
 export default function Home() {
   const context = useContext(UserContext);
@@ -95,7 +96,7 @@ export default function Home() {
   // 📍 Хаяг амжилттай хадгалагдсаны дараа localStorage руу давхар бичиж хадгална
   const handleSaveAddress = (address: string) => {
     setDeliveryAddress(address);
-    localStorage.setItem("delivery_address", address); // 👈 Нэмэв
+    localStorage.setItem("delivery_address", address);
     setIsAddressModalOpen(false);
     setIsOrderModalOpen(true); 
   };
@@ -135,50 +136,52 @@ export default function Home() {
   // 📍 Хэрэглэгч нэвтрэх эсвэл гарах (signout) үед ажиллах зассан логик
   useEffect(() => {
     if (context?.user) {
-      // 1. Хэрэглэгч нэвтэрсэн байвал захиалгын түүхийг татна (Энд хаягийг устгахгүй хэвээр үлдээнэ)
       fetchUserOrders();
     } else {
-      // 2. ЗӨВХӨН Хэрэглэгч өөрөө signout хийж user байхгүй болох үед л хаяг, захиалгыг бүрэн цэвэрлэнэ
       setDeliveryAddress("");
-      localStorage.removeItem("delivery_address"); // 👈 Нэмэв
+      localStorage.removeItem("delivery_address");
       setOrders([]); 
     }
     
-    // 3. Хэрэглэгчийн төлөв өөрчлөгдсөн ч хоолнуудыг (Food Cards) үргэлж найдвартай уншина
     fetchData(); 
   }, [context?.user]);
 
   return (
-    <div className="min-h-screen bg-[#181818]">
-      <Header 
-        onCartClick={() => setIsOrderModalOpen(true)} 
-        cartCount={cartItems.reduce((sum, item) => sum + item.quantity, 0)} 
-      />
-      
-      <div className="w-full h-[500px] relative">
-        <Image
-          src="/Image.png" 
-          alt="Food Banner"
-          fill
-          className="object-cover"
-          priority
+    <div className="min-h-screen bg-[#181818] flex flex-col justify-between">
+      <div>
+        <Header 
+          onCartClick={() => setIsOrderModalOpen(true)} 
+          cartCount={cartItems.reduce((sum, item) => sum + item.quantity, 0)} 
         />
-      </div>
-
-      <div className="w-full py-12 flex justify-center items-start">
-        <div className="w-full max-w-7xl px-8 flex flex-col items-center">
-          <FoodsSection
-            categoriesToRender={categories}
-            dishes={dishes}
-            loading={loading}
-            loadingCategoryId={loadingCategoryId}
-            setLoadingCategoryId={setLoadingCategoryId}
-            getDishes={fetchData}
-            isAdmin={false}
-            onAddDishToCart={handleAddToCart} 
+        
+        <div className="w-full h-[500px] relative">
+          <Image
+            src="/Image.png" 
+            alt="Food Banner"
+            fill
+            className="object-cover"
+            priority
           />
         </div>
+
+        <div className="w-full py-12 flex justify-center items-start">
+          <div className="w-full max-w-7xl px-8 flex flex-col items-center">
+            <FoodsSection
+              categoriesToRender={categories}
+              dishes={dishes}
+              loading={loading}
+              loadingCategoryId={loadingCategoryId}
+              setLoadingCategoryId={setLoadingCategoryId}
+              getDishes={fetchData}
+              isAdmin={false}
+              onAddDishToCart={handleAddToCart} 
+            />
+          </div>
+        </div>
       </div>
+
+      {/* 🔽 Хөл хэсэг (Footer) */}
+      <Footer />
 
       {/* Сагсны цонх */}
       <OrderDetail
